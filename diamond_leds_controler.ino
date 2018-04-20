@@ -6,6 +6,7 @@
 
 #include <string.h>
 
+
 //******************************************************************************************
 //******************************************************************************************
 // SmartThings Library for Arduino Ethernet W5100 Shield
@@ -33,6 +34,10 @@
 #define PIN_11_RESERVED           11  //reserved by W5100 Shield on UNO
 #define PIN_12_RESERVED           12  //reserved by W5100 Shield on UNO
 #define PIN_13_RESERVED           13  //reserved by W5100 Shield on UNO
+#define PIN_50_RESERVED          50  //reserved by W5500 Shield on MEGA
+#define PIN_51_RESERVED          51  //reserved by W5500 Shield on MEGA
+#define PIN_52_RESERVED          52  //reserved by W5500 Shield on MEGA
+#define PIN_53_RESERVED          53  //reserved by W5500 Shield on MEGA
 
 #define PIN_SWITCH_1              5  //SmartThings Capability "Switch"
 #define PIN_SWITCH_2              6  //SmartThings Capability "Switch"
@@ -57,13 +62,18 @@ const unsigned int hubPort = 39500;           // smartthings hub port
 
 
 // How many leds are in the strip?
-#define NUM_LEDS 24
+#define NUM_LEDS_PER_STRIP 24
+#define NUM_STRIPS 4
 
 // Data pin that led data will be written out over
-#define DATA_PIN 3
+#define DATA_PIN1 5
+#define DATA_PIN2 6
+#define DATA_PIN3 7
+#define DATA_PIN4 8
 
 // This is an array of leds.  One item for each led in your strip.
-CRGB leds[NUM_LEDS];
+
+CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
 
 int turnOnLights = 0;
 int colorOffset = 0;
@@ -85,7 +95,10 @@ void setup() {
  //Serial.println(turnOnLights);
 
  
-  FastLED.addLeds<TM1803, DATA_PIN, RGB>(leds, NUM_LEDS);
+  FastLED.addLeds<TM1803, DATA_PIN1, RGB>(leds[0], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<TM1803, DATA_PIN2, RGB>(leds[1], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<TM1803, DATA_PIN3, RGB>(leds[2], NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<TM1803, DATA_PIN4, RGB>(leds[3], NUM_LEDS_PER_STRIP);
 
   //FastLED.setBrightness(84);
 
@@ -159,17 +172,22 @@ void setup() {
 }
 
 void fadeall() {
-  for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i].nscale8(250);
+  for (int x = 0; x < NUM_STRIPS;x++ ) {
+  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
+    leds[x][i].nscale8(250);
     //leds[i] = CRGB::Black;
+  }
   }
 }
 
 void alltoblack() {
-  for (int i = 0; i < NUM_LEDS; i++) {
+  
+ for (int x = 0; x < NUM_STRIPS;x++ ) {
+  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
     //leds[i].nscale8(250);
-    leds[i] = CRGB::Black;
+    leds[x][i] = CRGB::Black;
   }
+ }
 }
 
 
@@ -191,25 +209,27 @@ void loop() {
   if (turnOnLights == 1 || turnOnLights == 2 || turnOnLights == 5) {
     // Move a single white led
     //for (int i = 0; i < NUM_LEDS; i = i + 1) {
-    for(int i = (NUM_LEDS)-1; i >= 0; i--) {
+     
+    for(int i = (NUM_LEDS_PER_STRIP)-1; i >= 0; i--) {
+     for (int x = 0; x < NUM_STRIPS; x++ ) {
       // Turn our current led on to white, then show the leds
       //leds[i] = CRGB::Green;
       //leds[i] = CRGB::Yellow;
-      leds[i] = CHSV(colorOffset, 255, 255);
-
+      leds[x][i] = CHSV(colorOffset, 255, 255);
+      
 // lightning yellow is 215
 // yellow 225
 
       if (turnOnLights == 5 ) {
          if (i > 0 ) {
-           leds[i - 1 ] = CHSV(255, 255, 255); // 155 before
+           leds[x][i - 1 ] = CHSV(255, 255, 255); // 155 before
          } 
          if (i - 1 > 0 ) {
-            leds[i - 2 ] = CHSV(colorOffset, 255, 20); // 155 before
+            leds[x][i - 2 ] = CHSV(colorOffset, 255, 20); // 155 before
          }
       } else {
          if (i > 0 ) {
-           leds[i - 1 ] = CHSV(colorOffset, 255, 155); // 155 before
+           leds[x][i - 1 ] = CHSV(colorOffset, 255, 155); // 155 before
          } 
         
       }
@@ -218,18 +238,20 @@ void loop() {
 
       // Show the leds (only one of which is set to white, from above)
       FastLED.show();
+    }
 
-
-      //fadeall();
+     //fadeall();
       // Wait a little bit
       delay(14);
 
-
+    for (int x = 0; x < NUM_STRIPS; x++ ) {
       // Turn our current led back to black for the next loop around
-      leds[i] = CRGB::Black;
+      leds[x][i] = CRGB::Black;
       if (i > 0 ) {
-        leds[i - 1 ] = CRGB::Black;
+        leds[x][i - 1 ] = CRGB::Black;
       }
+    }
+
     }
 
   } else if (turnOnLights == 3 || turnOnLights == 4) {
@@ -316,10 +338,12 @@ void callback(const String &msg)
 void cylonEffect() {
   static uint8_t hue = 0;
   Serial.print("x");
+
+   for (int x = 0; x < NUM_STRIPS;x++ ) {
   // First slide the led in one direction
-  for(int i = 0; i < NUM_LEDS; i++) {
+  for(int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
     // Set the i'th led to red 
-    leds[i] = CHSV(hue++, 255, 255);
+    leds[x][i] = CHSV(hue++, 255, 255);
     // Show the leds
     FastLED.show(); 
     // now that we've shown the leds, reset the i'th led to black
@@ -330,22 +354,30 @@ void cylonEffect() {
        fadeall();
     }
     // Wait a little bit before we loop around and do it again
-    delay(10);
+    
   }
   Serial.print("x");
+  delay(10);
+   }
+   
 
+  for (int x = 0; x < NUM_STRIPS;x++ ) {
   // Now go in the other direction.  
-  for(int i = (NUM_LEDS)-1; i >= 0; i--) {
+  for(int i = (NUM_LEDS_PER_STRIP)-1; i >= 0; i--) {
     // Set the i'th led to red 
-    leds[i] = CHSV(hue++, 255, 255);
+    leds[x][i] = CHSV(hue++, 255, 255);
     // Show the leds
     FastLED.show();
     // now that we've shown the leds, reset the i'th led to black
     // leds[i] = CRGB::Black;
     fadeall();
-    // Wait a little bit before we loop around and do it again
-    delay(10);
+    
+    
   }
+  // Wait a little bit before we loop around and do it again
+  delay(10);
+   }
+
     
 }
  

@@ -1,3 +1,5 @@
+
+
 #include "FastLED.h"
 
 //#include <Dhcp.h>
@@ -5,7 +7,19 @@
 //#include <EthernetUdp.h>
 
 #include <string.h>
+#include <SPI.h>
+#include <Ethernet.h>
 
+#include <aREST.h>
+
+// Create aREST instance
+aREST rest = aREST();
+
+// Ethernet server
+EthernetServer server(80);
+
+// Declare functions to be exposed to the API
+int ledControl(String command);
 
 //******************************************************************************************
 //******************************************************************************************
@@ -75,15 +89,35 @@ const unsigned int hubPort = 39500;           // smartthings hub port
 
 CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
 
+//the light pattern to use.
 int turnOnLights = 0;
 int colorOffset = 0;
 
+//define a max set of colors that pattern generator functions can use.
+//default to a fixed size of 4 colors if more are needed can increase.
+CRGB colorsToUse[4];
+
+
 int switchStates[] = {0,0,0};
+
+
+typedef void (*FuncPtr)(CRGB colors[], int mode);  //typedef 'return type' (*FuncPtr)('arguments')
+FuncPtr drawPatterns[]={&chasingToCenterTwoColorTail, &chasingToCenterThreeColorTail, &cyclonEffect};
+FuncPtr curdrawPattern = null;
 
 
 // This function sets up the ledsand tells the controller about them
 void setup() {
 
+
+  // Function to be exposed
+  rest.function("led",ledControl);
+   // Give name & ID to the device (ID should be 6 characters long)
+  rest.set_id("008");
+  rest.set_name("diamond_controller");
+
+  server.begin();
+   
   //******************************************************************************************
   //  FASTLED setup
   //******************************************************************************************
@@ -192,17 +226,36 @@ void alltoblack() {
 
 
 
+int loopCount = -1;
 
 void loop() {
 
 
-
+   // listen for incoming clients
+  EthernetClient client = server.available();
+ 
+  rest.handle(client);
+  
   //*****************************************************************************
   //Execute the Everything run method which takes care of "Everything"
   //*****************************************************************************
   st::Everything::run();
 
+  // curdrawPattern = drawPattern[1] // assign somewhere else 
+  
+  // invoke a drawing pattern
  
+  if(loopCount > 0) {
+    loopCount = loopCount -1;
+  } else if(loopCount == 0) {
+    curDrawPattern = null;
+    loopCount = -1;
+  }
+
+  if (curDrawPattern !=null ) {
+    curDrawPattern(colorsToUse, mode);
+  }
+  
  //Serial.print("checking turnOnLights:");
  //Serial.println(turnOnLights);
 
@@ -254,10 +307,32 @@ void loop() {
 
     }
 
-  } else if (turnOnLights == 3 || turnOnLights == 4) {
-    cylonEffect();
+  } else if (turnOnLights == 3 ) {
+    cylonEffect(0);
+  } else if (turnOnLights == 4) {
+    cylonEffect(1);
   }
 }
+
+
+// Custom function accessible by the API
+int ledControl(String command) {
+
+ Serial.println("rest call :" + command);
+  callback(command);
+  colorsToUse[0] = CHSV(colorOffset, 255, 255);
+  return 1;
+
+}
+
+void chasingToCenterTwoColorTail(CRGB colors[]) {
+  
+}
+
+void chasingToCenterThreeColorTail(CRGB colors[]) {
+  
+}
+
 
 
 //******************************************************************************************
@@ -268,16 +343,24 @@ void loop() {
 void callback(const String &msg)
 {
 
+// lightning yellow is 215
+// yellow 225
+
   Serial.println("callback :" + msg);
   
   if (msg.indexOf("on") > -1) {
     if (msg.indexOf("switch1") > -1 && turnOnLights == 0) {
       colorOffset = 0;
+      colorsToUse[0] = CHSV(colorOffset, 255, 255);
+      colorsToUse[1] = CHSV(colorOffset, 255, 155);
+      
       turnOnLights = 1;
       switchStates[0] = 1;
       Serial.println("Turnin on red chasing lights");
     } else if (msg.indexOf("switch2") > -1 && turnOnLights == 0) {
       colorOffset = 120;
+      colorsToUse[0] = CHSV(colorOffset, 255, 255);
+      colorsToUse[1] = CHSV(colorOffset, 255, 155);
       turnOnLights = 2;
       switchStates[1] = 1;
     } else if (msg.indexOf("switch3") > -1 && turnOnLights == 0) {
@@ -288,6 +371,9 @@ void callback(const String &msg)
       switchStates[2] = 1;
     } else if (msg.indexOf("switch2") > -1 && turnOnLights == 1) {
       colorOffset = 225;
+      colorsToUse[0] = CHSV(colorOffset, 255, 255);
+      colorsToUse[1] = CHSV(255, 255, 255); // 155 before
+      colorsToUse[2] = CHSV(colorOffset, 255, 20);
       turnOnLights = 5;
       switchStates[1] = 1;
     }
@@ -335,7 +421,7 @@ void callback(const String &msg)
 }
      
 
-void cylonEffect() {
+void cylonEffect(CRGB colors[], int mode) {
   static uint8_t hue = 0;
   Serial.print("x");
 
@@ -348,7 +434,7 @@ void cylonEffect() {
     FastLED.show(); 
     // now that we've shown the leds, reset the i'th led to black
     // leds[i] = CRGB::Black;
-    if (turnOnLights == 4) {
+    if (mode == 1) {
       alltoblack();
     } else {
        fadeall();
@@ -378,7 +464,17 @@ void cylonEffect() {
   delay(10);
    }
 
+
+  
     
 }
- 
 
+int sizeOfInt(int a[]) {
+     return (sizeof(a)/sizeof(int));
+ }
+
+int sizeOfCRGB(CRGB colors[]) {
+     return (sizeof(colors)/sizeof(CRGB));
+ }   
+
+ 

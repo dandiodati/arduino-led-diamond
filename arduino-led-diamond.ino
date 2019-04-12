@@ -102,8 +102,8 @@ int switchStates[] = {0,0,0};
 
 
 typedef void (*FuncPtr)(CRGB colors[], int mode);  //typedef 'return type' (*FuncPtr)('arguments')
-FuncPtr drawPatterns[]={&chasingToCenterTwoColorTail, &chasingToCenterThreeColorTail, &cyclonEffect};
-FuncPtr curdrawPattern = null;
+FuncPtr drawPatterns[]={&chasingToCenterWithTail, &chasingToCenterThreeColorTail, &cylonEffect};
+FuncPtr curDrawPattern = 0;
 
 
 // This function sets up the ledsand tells the controller about them
@@ -248,70 +248,70 @@ void loop() {
   if(loopCount > 0) {
     loopCount = loopCount -1;
   } else if(loopCount == 0) {
-    curDrawPattern = null;
+    curDrawPattern = 0;
     loopCount = -1;
   }
 
-  if (curDrawPattern !=null ) {
-    curDrawPattern(colorsToUse, mode);
+  if (curDrawPattern != 0 ) {
+    curDrawPattern(colorsToUse, 0);
   }
   
  //Serial.print("checking turnOnLights:");
  //Serial.println(turnOnLights);
 
-  if (turnOnLights == 1 || turnOnLights == 2 || turnOnLights == 5) {
-    // Move a single white led
-    //for (int i = 0; i < NUM_LEDS; i = i + 1) {
-     
-    for(int i = (NUM_LEDS_PER_STRIP)-1; i >= 0; i--) {
-     for (int x = 0; x < NUM_STRIPS; x++ ) {
-      // Turn our current led on to white, then show the leds
-      //leds[i] = CRGB::Green;
-      //leds[i] = CRGB::Yellow;
-      leds[x][i] = CHSV(colorOffset, 255, 255);
-      
-// lightning yellow is 215
-// yellow 225
-
-      if (turnOnLights == 5 ) {
-         if (i > 0 ) {
-           leds[x][i - 1 ] = CHSV(255, 255, 255); // 155 before
-         } 
-         if (i - 1 > 0 ) {
-            leds[x][i - 2 ] = CHSV(colorOffset, 255, 20); // 155 before
-         }
-      } else {
-         if (i > 0 ) {
-           leds[x][i - 1 ] = CHSV(colorOffset, 255, 155); // 155 before
-         } 
-        
-      }
-
- 
-
-      // Show the leds (only one of which is set to white, from above)
-      FastLED.show();
-    }
-
-     //fadeall();
-      // Wait a little bit
-      delay(14);
-
-    for (int x = 0; x < NUM_STRIPS; x++ ) {
-      // Turn our current led back to black for the next loop around
-      leds[x][i] = CRGB::Black;
-      if (i > 0 ) {
-        leds[x][i - 1 ] = CRGB::Black;
-      }
-    }
-
-    }
-
-  } else if (turnOnLights == 3 ) {
-    cylonEffect(0);
-  } else if (turnOnLights == 4) {
-    cylonEffect(1);
-  }
+//  if (turnOnLights == 1 || turnOnLights == 2 || turnOnLights == 5) {
+//    // Move a single white led
+//    //for (int i = 0; i < NUM_LEDS; i = i + 1) {
+//     
+//    for(int i = (NUM_LEDS_PER_STRIP)-1; i >= 0; i--) {
+//     for (int x = 0; x < NUM_STRIPS; x++ ) {
+//      // Turn our current led on to white, then show the leds
+//      //leds[i] = CRGB::Green;
+//      //leds[i] = CRGB::Yellow;
+//      leds[x][i] = CHSV(colorOffset, 255, 255);
+//      
+//// lightning yellow is 215
+//// yellow 225
+//
+//      if (turnOnLights == 5 ) {
+//         if (i > 0 ) {
+//           leds[x][i - 1 ] = CHSV(255, 255, 255); // 155 before
+//         } 
+//         if (i - 1 > 0 ) {
+//            leds[x][i - 2 ] = CHSV(colorOffset, 255, 20); // 155 before
+//         }
+//      } else {
+//         if (i > 0 ) {
+//           leds[x][i - 1 ] = CHSV(colorOffset, 255, 155); // 155 before
+//         } 
+//        
+//      }
+//
+// 
+//
+//      // Show the leds (only one of which is set to white, from above)
+//      FastLED.show();
+//    }
+//
+//     //fadeall();
+//      // Wait a little bit
+//      delay(14);
+//
+//    for (int x = 0; x < NUM_STRIPS; x++ ) {
+//      // Turn our current led back to black for the next loop around
+//      leds[x][i] = CRGB::Black;
+//      if (i > 0 ) {
+//        leds[x][i - 1 ] = CRGB::Black;
+//      }
+//    }
+//
+//    }
+//
+//  } else if (turnOnLights == 3 ) {
+//    cylonEffect(colorsToUse,0);
+//  } else if (turnOnLights == 4) {
+//    cylonEffect(colorsToUse,1);
+//  }
 }
 
 
@@ -321,16 +321,120 @@ int ledControl(String command) {
  Serial.println("rest call :" + command);
   callback(command);
   colorsToUse[0] = CHSV(colorOffset, 255, 255);
+  //colorsToUse[0] = 0x command
+  
   return 1;
 
 }
 
-void chasingToCenterTwoColorTail(CRGB colors[]) {
+//wil move a dot along with the first color as the main one and the next ones as trailing colors.
+// Can take as many colors as you want
+void chasingToCenterWithTail(CRGB colors[], int mode) {
   
+  int colorCount = sizeOfCRGB(colors);
+
+  for(int i = (NUM_LEDS_PER_STRIP)-1; i >= 0; i--) {
+     for (int x = 0; x < NUM_STRIPS; x++ ) {
+      // Turn our current led on to white, then show the leds
+      //leds[i] = CRGB::Green;
+      //leds[i] = CRGB::Yellow;
+
+
+      for (int ci = 0; ci < colorCount && (i- ci) >= 0; ci++) {
+         leds[x][i - ci] = colors[ci];
+      }
+// lightning yellow is 215
+// yellow 225
+     }
+
+      // Show the leds (only one of which is set to white, from above)
+      FastLED.show();
+    
+     //fadeall();
+      // Wait a little bit
+      delay(14);
+
+    for (int x = 0; x < NUM_STRIPS; x++ ) {
+      // Turn our current led back to black for the next loop around
+      for (int ci = 0; ci < colorCount && (i - ci) > 0; ci++) {
+         leds[x][i - ci] = CRGB::Black;
+      }
+    }
+  
+//   for(int i = (NUM_LEDS_PER_STRIP)-1; i >= 0; i--) {
+//     for (int x = 0; x < NUM_STRIPS; x++ ) {
+//      // Turn our current led on to white, then show the leds
+//      //leds[i] = CRGB::Green;
+//      //leds[i] = CRGB::Yellow;
+//
+//
+//      for (int ci = 0; ci < colorCount && (i- ci) > 0; ci++) {
+//         leds[x][i - ci] = colors[ci];
+//      }
+//// lightning yellow is 215
+//// yellow 225
+//
+//
+//      // Show the leds (only one of which is set to white, from above)
+//      FastLED.show();
+//    
+//
+//     //fadeall();
+//      // Wait a little bit
+//      delay(14);
+//
+//    for (int x = 0; x < NUM_STRIPS; x++ ) {
+//      // Turn our current led back to black for the next loop around
+//      for (int ci = 0; ci < colorCount && (i - ci) > 0; ci++) {
+//         leds[x][i - ci] = CRGB::Black;
+//      }
+//     
+//    }
+   }
 }
 
 void chasingToCenterThreeColorTail(CRGB colors[]) {
+   int colorCount = sizeOfCRGB(colors);
+
+ 
+   
+  for(int i = NUM_LEDS_PER_STRIP -1,e = 0 ; e < i && (e < NUM_LEDS_PER_STRIP/3 || i > NUM_LEDS_PER_STRIP/3) ; i--, e++) {
+     for (int x = 0; x < NUM_STRIPS; x++ ) {
+      // Turn our current led on to white, then show the leds
+      //leds[i] = CRGB::Green;
+      //leds[i] = CRGB::Yellow;
+
+
+      for (int ci = 0; ci < colorCount && (i + ci) >= NUM_LEDS_PER_STRIP/3; ci++) {
+         leds[x][i + ci] = colors[ci];
+      }
+
+      for (int ci = 0; ci < colorCount && (e - ci) >= 0; ci++) {
+         leds[x][e - ci] = colors[ci];
+      }
+// lightning yellow is 215
+// yellow 225
+     }
+
+     
+
+      // Show the leds (only one of which is set to white, from above)
+      FastLED.show();
+    
+     //fadeall();
+      // Wait a little bit
+      delay(14);
+
+    for (int x = 0; x < NUM_STRIPS; x++ ) {
+      // Turn our current led back to black for the next loop around
+      for (int ci = 0; ci < colorCount && (i + ci) >= NUM_LEDS_PER_STRIP/3; ci++) {
+         leds[x][i + ci] = CRGB::Black;
+         leds[x][e - ci] = CRGB::Black; 
+      }
+    }
   
+
+   }
 }
 
 
@@ -353,6 +457,7 @@ void callback(const String &msg)
       colorOffset = 0;
       colorsToUse[0] = CHSV(colorOffset, 255, 255);
       colorsToUse[1] = CHSV(colorOffset, 255, 155);
+      curDrawPattern = &chasingToCenterWithTail;
       
       turnOnLights = 1;
       switchStates[0] = 1;

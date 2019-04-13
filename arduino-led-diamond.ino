@@ -53,9 +53,9 @@ int ledControl(String command);
 #define PIN_52_RESERVED          52  //reserved by W5500 Shield on MEGA
 #define PIN_53_RESERVED          53  //reserved by W5500 Shield on MEGA
 
-#define PIN_SWITCH_1              5  //SmartThings Capability "Switch"
-#define PIN_SWITCH_2              6  //SmartThings Capability "Switch"
-#define PIN_SWITCH_3              7  //SmartThings Capability "Switch"
+#define PIN_SWITCH_1              15  //SmartThings Capability "Switch"
+#define PIN_SWITCH_2              16 //SmartThings Capability "Switch"
+#define PIN_SWITCH_3              17  //SmartThings Capability "Switch"
 
 #define PIN_CONTACT_1             26  //SmartThings Capability "Contact Sensor"
 
@@ -76,32 +76,34 @@ const unsigned int hubPort = 39500;           // smartthings hub port
 
 
 // How many leds are in the strip?
-#define NUM_LEDS_PER_STRIP 24
+#define NUM_LEDS_PER_STRIP 25
 #define NUM_STRIPS 4
 
 // Data pin that led data will be written out over
-#define DATA_PIN1 5
-#define DATA_PIN2 6
-#define DATA_PIN3 7
-#define DATA_PIN4 8
+#define DATA_PIN1 4
+#define DATA_PIN2 5
+#define DATA_PIN3 6
+#define DATA_PIN4 7
 
 // This is an array of leds.  One item for each led in your strip.
 
 CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
 
-//the light pattern to use.
-int turnOnLights = 0;
-int colorOffset = 0;
+
 
 //define a max set of colors that pattern generator functions can use.
 //default to a fixed size of 4 colors if more are needed can increase.
 CRGB colorsToUse[4];
 
+//number of colors set in the colorsToUser array.
+int colorCount = 1;
+
+
 
 int switchStates[] = {0,0,0};
 
 
-typedef void (*FuncPtr)(CRGB colors[], int mode);  //typedef 'return type' (*FuncPtr)('arguments')
+typedef void (*FuncPtr)(CRGB colors[], int count, int mode);  //typedef 'return type' (*FuncPtr)('arguments')
 FuncPtr drawPatterns[]={&chasingToCenterWithTail, &chasingToCenterThreeColorTail, &cylonEffect};
 FuncPtr curDrawPattern = 0;
 
@@ -124,9 +126,6 @@ void setup() {
   // sanity check delay - allows reprogramming if accidently blowing power w/leds
   delay(1000);
 
-
-//Serial.print("checking turnOnLights in setup:");
- //Serial.println(turnOnLights);
 
  
   FastLED.addLeds<TM1803, DATA_PIN1, RGB>(leds[0], NUM_LEDS_PER_STRIP);
@@ -220,6 +219,10 @@ void alltoblack() {
   for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
     //leds[i].nscale8(250);
     leds[x][i] = CRGB::Black;
+    Serial.print("blacking out lights: ");
+    Serial.print(x);
+    Serial.print(",");
+    Serial.println(i);
   }
  }
 }
@@ -253,11 +256,10 @@ void loop() {
   }
 
   if (curDrawPattern != 0 ) {
-    curDrawPattern(colorsToUse, 0);
+    curDrawPattern(colorsToUse, colorCount, 0);
   }
   
- //Serial.print("checking turnOnLights:");
- //Serial.println(turnOnLights);
+
 
 //  if (turnOnLights == 1 || turnOnLights == 2 || turnOnLights == 5) {
 //    // Move a single white led
@@ -317,10 +319,31 @@ void loop() {
 
 // Custom function accessible by the API
 int ledControl(String command) {
+  Serial.println("rest call :" + command);
 
- Serial.println("rest call :" + command);
-  callback(command);
-  colorsToUse[0] = CHSV(colorOffset, 255, 255);
+  command.replace("%20"," ");
+
+  int sepIndex = command.indexOf('&');
+
+  String cmd = command.substring(0,sepIndex);
+
+  String secPart = command.substring(sepIndex+1);
+  int eqIndex = secPart.indexOf('=');
+  loopCount = secPart.substring(eqIndex+1).toInt();
+
+   Serial.println("Got cmd :" + cmd);
+   Serial.print("Got count :");
+   Serial.println(loopCount);
+
+  //pch = strtok (NULL,"&");
+  //if (pch != NULL) {
+  //  loopCount = atoi(pch);
+  //}
+  
+  
+
+  callback(cmd);
+  //colorsToUse[0] = CHSV(colorOffset, 255, 255);
   //colorsToUse[0] = 0x command
   
   return 1;
@@ -329,19 +352,29 @@ int ledControl(String command) {
 
 //wil move a dot along with the first color as the main one and the next ones as trailing colors.
 // Can take as many colors as you want
-void chasingToCenterWithTail(CRGB colors[], int mode) {
+void chasingToCenterWithTail(CRGB colors[], int count, int mode) {
   
-  int colorCount = sizeOfCRGB(colors);
+  int colorCount = count;
+  
+  Serial.print("chasingToCenterWith Tail :");
+  Serial.println(colorCount);
 
-  for(int i = (NUM_LEDS_PER_STRIP)-1; i >= 0; i--) {
+  
+  
+  for(int i = NUM_LEDS_PER_STRIP; i >= 0; i--) {
+   
      for (int x = 0; x < NUM_STRIPS; x++ ) {
       // Turn our current led on to white, then show the leds
       //leds[i] = CRGB::Green;
       //leds[i] = CRGB::Yellow;
-
-
       for (int ci = 0; ci < colorCount && (i- ci) >= 0; ci++) {
          leds[x][i - ci] = colors[ci];
+         Serial.print("looping over leds ");
+         Serial.print(x);
+         Serial.print(",");
+         Serial.print(i);
+         Serial.print(",");
+         Serial.println(ci);
       }
 // lightning yellow is 215
 // yellow 225
@@ -356,8 +389,8 @@ void chasingToCenterWithTail(CRGB colors[], int mode) {
 
     for (int x = 0; x < NUM_STRIPS; x++ ) {
       // Turn our current led back to black for the next loop around
-      for (int ci = 0; ci < colorCount && (i - ci) > 0; ci++) {
-         leds[x][i - ci] = CRGB::Black;
+      for (int ci = 0; ci < colorCount && (i - ci) >= -1; ci++) {
+        leds[x][i - ci] = CRGB::Black;
       }
     }
   
@@ -449,37 +482,41 @@ void callback(const String &msg)
 
 // lightning yellow is 215
 // yellow 225
-
+  //the light pattern to use.
+  int colorOffset = 0;
+  
   Serial.println("callback :" + msg);
   
   if (msg.indexOf("on") > -1) {
-    if (msg.indexOf("switch1") > -1 && turnOnLights == 0) {
+    if (msg.indexOf("switch1") > -1) {
       colorOffset = 0;
       colorsToUse[0] = CHSV(colorOffset, 255, 255);
       colorsToUse[1] = CHSV(colorOffset, 255, 155);
+      colorCount = 2;
       curDrawPattern = &chasingToCenterWithTail;
       
-      turnOnLights = 1;
       switchStates[0] = 1;
       Serial.println("Turnin on red chasing lights");
-    } else if (msg.indexOf("switch2") > -1 && turnOnLights == 0) {
+    } else if (msg.indexOf("switch2") > -1 ) {
       colorOffset = 120;
       colorsToUse[0] = CHSV(colorOffset, 255, 255);
       colorsToUse[1] = CHSV(colorOffset, 255, 155);
-      turnOnLights = 2;
+      colorCount = 2;
+      curDrawPattern = &chasingToCenterWithTail;
       switchStates[1] = 1;
-    } else if (msg.indexOf("switch3") > -1 && turnOnLights == 0) {
-      turnOnLights = 3;
+       Serial.println("Turnin on blue chasing lights");
+    } else if (msg.indexOf("switch3") > -1) {
+      //curDrawPattern = &cylonEffect;
       switchStates[2] = 1;
-    } else if (msg.indexOf("switch3") > -1 && turnOnLights == 1) {
-      turnOnLights = 4;
+    } else if (msg.indexOf("switch3") > -1) {
       switchStates[2] = 1;
-    } else if (msg.indexOf("switch2") > -1 && turnOnLights == 1) {
+    } else if (msg.indexOf("switch2") > -1) {
       colorOffset = 225;
       colorsToUse[0] = CHSV(colorOffset, 255, 255);
       colorsToUse[1] = CHSV(255, 255, 255); // 155 before
       colorsToUse[2] = CHSV(colorOffset, 255, 20);
-      turnOnLights = 5;
+      colorCount = 3;
+      //curDrawPattern = &chasingToCenterWithTail;
       switchStates[1] = 1;
     }
 
@@ -504,7 +541,7 @@ void callback(const String &msg)
 
     if (isAllOff == 1 ) {
       Serial.println("All switches off so turning leds to off");
-       turnOnLights = 0;
+       curDrawPattern = 0;
        alltoblack();
        FastLED.show();
     }
@@ -526,7 +563,7 @@ void callback(const String &msg)
 }
      
 
-void cylonEffect(CRGB colors[], int mode) {
+void cylonEffect(CRGB colors[], int count,  int mode) {
   static uint8_t hue = 0;
   Serial.print("x");
 
@@ -554,7 +591,7 @@ void cylonEffect(CRGB colors[], int mode) {
 
   for (int x = 0; x < NUM_STRIPS;x++ ) {
   // Now go in the other direction.  
-  for(int i = (NUM_LEDS_PER_STRIP)-1; i >= 0; i--) {
+  for(int i = NUM_LEDS_PER_STRIP; i >= 0; i--) {
     // Set the i'th led to red 
     leds[x][i] = CHSV(hue++, 255, 255);
     // Show the leds

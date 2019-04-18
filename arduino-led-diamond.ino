@@ -1,4 +1,7 @@
-
+# V2.0a
+# This version is now supporting access the four separate led strips separately allowing for more control.
+# Added a rest implementation but not quite done yet.
+# Add switchState support using bits to control combination of the three switches (Allows for 9 states).
 
 #include "FastLED.h"
 

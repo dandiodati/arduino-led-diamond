@@ -1,7 +1,7 @@
-# V2.0a
-# This version is now supporting access the four separate led strips separately allowing for more control.
-# Added a rest implementation but not quite done yet.
-# Add switchState support using bits to control combination of the three switches (Allows for 9 states).
+// V2.0a
+// This version is now supporting access the four separate led strips separately allowing for more control.
+// Added a rest implementation but not quite done yet.
+// Add state support using bits to control combination of the three switches (Allows for 9 states).
 
 #include "FastLED.h"
 
@@ -103,7 +103,11 @@ int colorCount = 1;
 
 
 
-byte switchState = 0;
+byte state = 0;
+
+byte SWITCH1 = 1; //001
+byte SWITCH2 = 2; //010
+byte SWITCH3 = 4; //100
 
 
 
@@ -235,7 +239,14 @@ void alltoblack() {
 
 int loopCount = -1;
 
+byte REDCHASING = SWITCH1;
+byte REDWAVING  = SWITCH1 | SWITCH3;
+byte BLUECHASING = SWITCH2;
+byte CYCLON      = SWITCH3;
+byte FIRECHASING = SWITCH1 | SWITCH2;
+
 void loop() {
+
 
 
    // listen for incoming clients
@@ -249,9 +260,52 @@ void loop() {
   st::Everything::run();
 
   // curdrawPattern = drawPattern[1] // assign somewhere else 
+
+
+  //setup colors based on what state we are in
+  if( state == REDCHASING) {
+    int colorOffset = 0;
+      colorsToUse[0] = CHSV(colorOffset, 255, 255);
+      colorsToUse[1] = CHSV(colorOffset, 255, 55);
+      colorCount = 2;
+      curDrawPattern = &chasingToCenterWithTail;
+  }  else if( state == BLUECHASING) {
+      int colorOffset = 120;
+      colorsToUse[0] = CHSV(colorOffset, 255, 255);
+      colorsToUse[1] = CHSV(colorOffset, 255, 155);
+      colorCount = 2;
+      curDrawPattern = &chasingToCenterWithTail;
+      Serial.println("Turnin on blue chasing lights");
+  } else if (state == CYCLON) {
+      curDrawPattern = &cylonEffect;
+  } else if (state == FIRECHASING) {
+    //// lightning yellow is 215
+    //// yellow 225
+      int colorOffset = 225;
+      colorsToUse[0] = CHSV(255, 255, 255);
+      colorsToUse[1] = CHSV(255, 255, 155); // 155 before
+      colorsToUse[2] = CHSV(colorOffset, 255, 200);
+      colorsToUse[3] = CHSV(colorOffset, 255, 150);
+      colorCount = 4;
+      curDrawPattern = &chasingToCenterWithTail;
+  } else if( state == REDWAVING) {
+      int colorOffset = 0;
+      colorsToUse[0] = CHSV(colorOffset, 255, 55);
+      colorsToUse[1] = CHSV(colorOffset, 255, 255);
+      colorsToUse[2] = CHSV(colorOffset, 255, 55);
+      colorCount = 3;
+      curDrawPattern = &wavingToCenterWithTail;
+  } else if (state == 0 ) {
+      Serial.println("All switches off so turning leds to off");
+       curDrawPattern = 0;
+       alltoblack();
+       colorCount = 0;
+       FastLED.show();
+  }
+    
   
-  // invoke a drawing pattern
- 
+  // invoke the previous setup drawing pattern
+
   if(loopCount > 0) {
     loopCount = loopCount -1;
   } else if(loopCount == 0) {
@@ -262,66 +316,12 @@ void loop() {
   if (curDrawPattern != 0 ) {
     curDrawPattern(colorsToUse, colorCount, 0);
   }
-  
-  
-
-//  if (turnOnLights == 1 || turnOnLights == 2 || turnOnLights == 5) {
-//    // Move a single white led
-//    //for (int i = 0; i < NUM_LEDS; i = i + 1) {
-//     
-//    for(int i = (NUM_LEDS_PER_STRIP)-1; i >= 0; i--) {
-//     for (int x = 0; x < NUM_STRIPS; x++ ) {
-//      // Turn our current led on to white, then show the leds
-//      //leds[i] = CRGB::Green;
-//      //leds[i] = CRGB::Yellow;
-//      leds[x][i] = CHSV(colorOffset, 255, 255);
-//      
-//// lightning yellow is 215
-//// yellow 225
-//
-//      if (turnOnLights == 5 ) {
-//         if (i > 0 ) {
-//           leds[x][i - 1 ] = CHSV(255, 255, 255); // 155 before
-//         } 
-//         if (i - 1 > 0 ) {
-//            leds[x][i - 2 ] = CHSV(colorOffset, 255, 20); // 155 before
-//         }
-//      } else {
-//         if (i > 0 ) {
-//           leds[x][i - 1 ] = CHSV(colorOffset, 255, 155); // 155 before
-//         } 
-//        
-//      }
-//
-// 
-//
-//      // Show the leds (only one of which is set to white, from above)
-//      FastLED.show();
-//    }
-//
-//     //fadeall();
-//      // Wait a little bit
-//      delay(14);
-//
-//    for (int x = 0; x < NUM_STRIPS; x++ ) {
-//      // Turn our current led back to black for the next loop around
-//      leds[x][i] = CRGB::Black;
-//      if (i > 0 ) {
-//        leds[x][i - 1 ] = CRGB::Black;
-//      }
-//    }
-//
-//    }
-//
-//  } else if (turnOnLights == 3 ) {
-//    cylonEffect(colorsToUse,0);
-//  } else if (turnOnLights == 4) {
-//    cylonEffect(colorsToUse,1);
-//  }
+ 
 }
 
 
 // Custom function accessible by the API
+// /led?state=001&loopCount=1
 int ledControl(String command) {
   Serial.println("rest call :" + command);
 
@@ -331,6 +331,7 @@ int ledControl(String command) {
 
   String cmd = command.substring(0,sepIndex);
 
+  state = toByteState(cmd);
   String secPart = command.substring(sepIndex+1);
   int eqIndex = secPart.indexOf('=');
   loopCount = secPart.substring(eqIndex+1).toInt();
@@ -339,19 +340,22 @@ int ledControl(String command) {
    Serial.print("Got count :");
    Serial.println(loopCount);
 
-  //pch = strtok (NULL,"&");
-  //if (pch != NULL) {
-  //  loopCount = atoi(pch);
-  //}
-  
-  
-
-  callback(cmd);
+  //callback(cmd);
   //colorsToUse[0] = CHSV(colorOffset, 255, 255);
   //colorsToUse[0] = 0x command
   
   return 1;
 
+}
+
+byte toByteState(String str) {
+  byte result = 0;
+  for (int i = 0; i < str.length(); i++ ) {
+    byte b = str.substring(i, i+1).toInt();
+    result = result << 1;
+    result = result | b;  
+  }
+  return result;
 }
 
 //wil move a dot along with the first color as the main one and the next ones as trailing colors.
@@ -520,79 +524,27 @@ void callback(const String &msg)
   
   Serial.println("callback :" + msg);
   
-  byte SWITCH1 = 1; //001
-  byte SWITCH2 = 2; //010
-  byte SWITCH3 = 4; //100
-  byte REDCHASING = SWITCH1;
-  byte REDWAVING  = SWITCH1 | SWITCH3;
-  byte BLUECHASING = SWITCH2;
-  byte CYCLON      = SWITCH3;
-  byte FIRECHASING = SWITCH1 | SWITCH2;
-  
-  
-
   if (msg.indexOf("on") > -1) {
     if (msg.indexOf("switch1") > -1) {
-      switchState = switchState | SWITCH1;
+      state = state | SWITCH1;
     } else if (msg.indexOf("switch2") > -1 ) {
-      switchState = switchState | SWITCH2;
+      state = state | SWITCH2;
     } else if (msg.indexOf("switch3") > -1) {
-      switchState = switchState | SWITCH3;
+      state = state | SWITCH3;
     } 
   } else if (msg.indexOf("off") > -1) { 
     if (msg.indexOf("switch1") > -1) {
-      switchState = switchState & ~SWITCH1;
+      state = state & ~SWITCH1;
     } else if (msg.indexOf("switch2") > -1) {
-      switchState = switchState & ~SWITCH2;
+      state = state & ~SWITCH2;
     } else if (msg.indexOf("switch3") > -1) {
-      switchState = switchState & ~SWITCH3;
+      state = state & ~SWITCH3;
     }
   }
 
-  Serial.print("switchState =");
-  Serial.println(switchState);
+  Serial.print("state =");
+  Serial.println(state);
 
- // maybe move this to main loop
-  if( switchState == REDCHASING) {
-    colorOffset = 0;
-      colorsToUse[0] = CHSV(colorOffset, 255, 255);
-      colorsToUse[1] = CHSV(colorOffset, 255, 55);
-      colorCount = 2;
-      curDrawPattern = &chasingToCenterWithTail;
-  }  else if( switchState == BLUECHASING) {
-      colorOffset = 120;
-      colorsToUse[0] = CHSV(colorOffset, 255, 255);
-      colorsToUse[1] = CHSV(colorOffset, 255, 155);
-      colorCount = 2;
-      curDrawPattern = &chasingToCenterWithTail;
-      Serial.println("Turnin on blue chasing lights");
-  } else if (switchState == CYCLON) {
-      curDrawPattern = &cylonEffect;
-  } else if (switchState == FIRECHASING) {
-    //// lightning yellow is 215
-    //// yellow 225
-      colorOffset = 225;
-      colorsToUse[0] = CHSV(255, 255, 255);
-      colorsToUse[1] = CHSV(255, 255, 155); // 155 before
-      colorsToUse[2] = CHSV(colorOffset, 255, 200);
-      colorsToUse[3] = CHSV(colorOffset, 255, 150);
-      colorCount = 4;
-      curDrawPattern = &chasingToCenterWithTail;
-  } else if( switchState == REDWAVING) {
-      colorOffset = 0;
-      colorsToUse[0] = CHSV(colorOffset, 255, 55);
-      colorsToUse[1] = CHSV(colorOffset, 255, 255);
-      colorsToUse[2] = CHSV(colorOffset, 255, 55);
-      colorCount = 3;
-      curDrawPattern = &wavingToCenterWithTail;
-  }
-
-    if (switchState == 0 ) {
-      Serial.println("All switches off so turning leds to off");
-       curDrawPattern = 0;
-       alltoblack();
-       FastLED.show();
-    }
     
     //st::receiveSmartString("switch1 off");
     //st::receiveSmartString("switch2 off");

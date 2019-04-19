@@ -235,6 +235,16 @@ void alltoblack() {
  }
 }
 
+void alltoColor(CRGB color) {
+  
+ for (int x = 0; x < NUM_STRIPS;x++ ) {
+  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
+    //leds[i].nscale8(250);
+    leds[x][i] = color;
+  }
+ }
+}
+
 
 
 int loopCount = -1;
@@ -244,6 +254,7 @@ byte REDWAVING  = SWITCH1 | SWITCH3;
 byte BLUECHASING = SWITCH2;
 byte CYCLON      = SWITCH3;
 byte FIRECHASING = SWITCH1 | SWITCH2;
+byte FIRESPLIT = SWITCH2 | SWITCH3;
 
 void loop() {
 
@@ -295,7 +306,16 @@ void loop() {
       colorsToUse[2] = CHSV(colorOffset, 255, 55);
       colorCount = 3;
       curDrawPattern = &wavingToCenterWithTail;
-  } else if (state == 0 ) {
+  } else if( state == REDSPLIT) {
+      int colorOffset = 0;
+      colorsToUse[0] = CHSV(colorOffset, 255, 55);
+      colorsToUse[1] = CHSV(colorOffset, 255, 255);
+      colorsToUse[2] = CHSV(colorOffset, 255, 55);
+      colorCount = 3;
+      curDrawPattern = &splitToCenterTail;
+
+      
+  }else if (state == 0 ) {
       Serial.println("All switches off so turning leds to off");
        curDrawPattern = 0;
        alltoblack();
@@ -462,10 +482,11 @@ void wavingToCenterWithTail(CRGB colors[], int count, int mode) {
 }
 
 
-void chasingToCenterThreeColorTail(CRGB colors[]) {
+void splitToCenterTail(CRGB colors[], int count, int mode) {
    int colorCount = sizeOfCRGB(colors);
 
- 
+
+  allToColor(CRGB::Green);
    
   for(int i = NUM_LEDS_PER_STRIP -1,e = 0 ; e < i && (e < NUM_LEDS_PER_STRIP/3 || i > NUM_LEDS_PER_STRIP/3) ; i--, e++) {
      for (int x = 0; x < NUM_STRIPS; x++ ) {
@@ -474,18 +495,22 @@ void chasingToCenterThreeColorTail(CRGB colors[]) {
       //leds[i] = CRGB::Yellow;
 
 
-      for (int ci = 0; ci < colorCount && (i + ci) >= NUM_LEDS_PER_STRIP/3; ci++) {
+      for (int ci = 0; ci < count && (i + ci) >= NUM_LEDS_PER_STRIP/3; ci++) {
          leds[x][i + ci] = colors[ci];
       }
 
-      for (int ci = 0; ci < colorCount && (e - ci) >= 0; ci++) {
+      for (int ci = 0; ci < count && (e - ci) >= 0; ci++) {
          leds[x][e - ci] = colors[ci];
       }
 // lightning yellow is 215
 // yellow 225
-     }
-
      
+
+      // Turn our current led back to black for the next loop around
+      for (int ci = 0; ci < colorCount && (i + ci) >= NUM_LEDS_PER_STRIP/3; ci++) {
+         leds[x][i + ci] = CRGB::Black;
+         leds[x][e - ci] = CRGB::Black; 
+      }
 
       // Show the leds (only one of which is set to white, from above)
       FastLED.show();
@@ -494,14 +519,10 @@ void chasingToCenterThreeColorTail(CRGB colors[]) {
       // Wait a little bit
       delay(14);
 
-    for (int x = 0; x < NUM_STRIPS; x++ ) {
-      // Turn our current led back to black for the next loop around
-      for (int ci = 0; ci < colorCount && (i + ci) >= NUM_LEDS_PER_STRIP/3; ci++) {
-         leds[x][i + ci] = CRGB::Black;
-         leds[x][e - ci] = CRGB::Black; 
-      }
+    
+
+    
     }
-  
 
    }
 }

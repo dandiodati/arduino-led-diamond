@@ -112,7 +112,7 @@ byte SWITCH3 = 4; //100
 
 
 typedef void (*FuncPtr)(CRGB colors[], int count, int mode);  //typedef 'return type' (*FuncPtr)('arguments')
-FuncPtr drawPatterns[]={&chasingToCenterWithTail, &chasingToCenterThreeColorTail, &cylonEffect};
+//FuncPtr drawPatterns[]={&chasingToCenterWithTail, &chasingToCenterThreeColorTail, &cylonEffect};
 FuncPtr curDrawPattern = 0;
 
 
@@ -121,13 +121,13 @@ void setup() {
 
 
   // Function to be exposed
-  rest.function("led",ledControl);
-   // Give name & ID to the device (ID should be 6 characters long)
+  rest.function("led", ledControl);
+  // Give name & ID to the device (ID should be 6 characters long)
   rest.set_id("008");
   rest.set_name("diamond_controller");
 
   server.begin();
-   
+
   //******************************************************************************************
   //  FASTLED setup
   //******************************************************************************************
@@ -135,7 +135,7 @@ void setup() {
   delay(1000);
 
 
- 
+
   FastLED.addLeds<TM1803, DATA_PIN1, RGB>(leds[0], NUM_LEDS_PER_STRIP);
   FastLED.addLeds<TM1803, DATA_PIN2, RGB>(leds[1], NUM_LEDS_PER_STRIP);
   FastLED.addLeds<TM1803, DATA_PIN3, RGB>(leds[2], NUM_LEDS_PER_STRIP);
@@ -167,7 +167,7 @@ void setup() {
   static st::EX_Switch              executor2(F("switch2"), PIN_SWITCH_2, LOW, true);
   static st::EX_Switch              executor3(F("switch3"), PIN_SWITCH_3, LOW, true);
 
-//static st::IS_Contact             sensor11(F("contact1"), PIN_CONTACT_1, LOW, true, 500);
+  //static st::IS_Contact             sensor11(F("contact1"), PIN_CONTACT_1, LOW, true, 500);
 
   //*****************************************************************************
   //  Configure debug print output from each main class
@@ -176,7 +176,7 @@ void setup() {
   st::Executor::debug = true;
   st::Device::debug = true;
   //st::PollingSensor::debug=true;
-//  st::InterruptSensor::debug = true;
+  //  st::InterruptSensor::debug = true;
 
   //*****************************************************************************
   //Initialize the "Everything" Class
@@ -213,36 +213,28 @@ void setup() {
 }
 
 void fadeall() {
-  for (int x = 0; x < NUM_STRIPS;x++ ) {
-  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
-    leds[x][i].nscale8(250);
-    //leds[i] = CRGB::Black;
-  }
+  for (int x = 0; x < NUM_STRIPS; x++ ) {
+    for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
+      leds[x][i].nscale8(250);
+      //leds[i] = CRGB::Black;
+    }
   }
 }
 
 void alltoblack() {
-  
- for (int x = 0; x < NUM_STRIPS;x++ ) {
-  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
-    //leds[i].nscale8(250);
-    leds[x][i] = CRGB::Black;
-    Serial.print("blacking out lights: ");
-    Serial.print(x);
-    Serial.print(",");
-    Serial.println(i);
-  }
- }
+  alltoColor(CRGB::Black);
 }
 
 void alltoColor(CRGB color) {
-  
- for (int x = 0; x < NUM_STRIPS;x++ ) {
-  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
-    //leds[i].nscale8(250);
-    leds[x][i] = color;
+
+  Serial.print("Setting all leds to color " );
+  Serial.println(color);
+  for (int x = 0; x < NUM_STRIPS; x++ ) {
+    for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
+      //leds[i].nscale8(250);
+      leds[x][i] = color;
+    }
   }
- }
 }
 
 
@@ -254,89 +246,106 @@ byte REDWAVING  = SWITCH1 | SWITCH3;
 byte BLUECHASING = SWITCH2;
 byte CYCLON      = SWITCH3;
 byte FIRECHASING = SWITCH1 | SWITCH2;
-byte FIRESPLIT = SWITCH2 | SWITCH3;
+byte REDSPLIT = SWITCH2 | SWITCH3;
+byte PURPLETAILS = SWITCH1 | SWITCH2 | SWITCH3;
+
+byte lastState = -1;
 
 void loop() {
 
 
 
-   // listen for incoming clients
+  // listen for incoming clients
   EthernetClient client = server.available();
- 
+
   rest.handle(client);
-  
+
   //*****************************************************************************
   //Execute the Everything run method which takes care of "Everything"
   //*****************************************************************************
   st::Everything::run();
 
-  // curdrawPattern = drawPattern[1] // assign somewhere else 
+  // curdrawPattern = drawPattern[1] // assign somewhere else
 
-
-  //setup colors based on what state we are in
-  if( state == REDCHASING) {
-    int colorOffset = 0;
-      colorsToUse[0] = CHSV(colorOffset, 255, 255);
-      colorsToUse[1] = CHSV(colorOffset, 255, 55);
-      colorCount = 2;
-      curDrawPattern = &chasingToCenterWithTail;
-  }  else if( state == BLUECHASING) {
-      int colorOffset = 120;
-      colorsToUse[0] = CHSV(colorOffset, 255, 255);
-      colorsToUse[1] = CHSV(colorOffset, 255, 155);
-      colorCount = 2;
-      curDrawPattern = &chasingToCenterWithTail;
-      Serial.println("Turnin on blue chasing lights");
-  } else if (state == CYCLON) {
-      curDrawPattern = &cylonEffect;
-  } else if (state == FIRECHASING) {
-    //// lightning yellow is 215
-    //// yellow 225
-      int colorOffset = 225;
-      colorsToUse[0] = CHSV(255, 255, 255);
-      colorsToUse[1] = CHSV(255, 255, 155); // 155 before
-      colorsToUse[2] = CHSV(colorOffset, 255, 200);
-      colorsToUse[3] = CHSV(colorOffset, 255, 150);
-      colorCount = 4;
-      curDrawPattern = &chasingToCenterWithTail;
-  } else if( state == REDWAVING) {
-      int colorOffset = 0;
-      colorsToUse[0] = CHSV(colorOffset, 255, 55);
-      colorsToUse[1] = CHSV(colorOffset, 255, 255);
-      colorsToUse[2] = CHSV(colorOffset, 255, 55);
-      colorCount = 3;
-      curDrawPattern = &wavingToCenterWithTail;
-  } else if( state == REDSPLIT) {
-      int colorOffset = 0;
-      colorsToUse[0] = CHSV(colorOffset, 255, 55);
-      colorsToUse[1] = CHSV(colorOffset, 255, 255);
-      colorsToUse[2] = CHSV(colorOffset, 255, 55);
-      colorCount = 3;
-      curDrawPattern = &splitToCenterTail;
-
-      
-  }else if (state == 0 ) {
-      Serial.println("All switches off so turning leds to off");
-       curDrawPattern = 0;
-       alltoblack();
-       colorCount = 0;
-       FastLED.show();
-  }
-    
-  
   // invoke the previous setup drawing pattern
 
-  if(loopCount > 0) {
-    loopCount = loopCount -1;
-  } else if(loopCount == 0) {
+  if (loopCount > 0) {
+    loopCount = loopCount - 1;
+  } else if (loopCount == 0) {
     curDrawPattern = 0;
     loopCount = -1;
+    state = 0;
+    alltoblack();
+    FastLED.show();
   }
 
   if (curDrawPattern != 0 ) {
     curDrawPattern(colorsToUse, colorCount, 0);
   }
- 
+
+}
+
+
+void handleStateChange(byte newState) {
+  state = newState;
+
+  // whenever a state changes reset everything back to black
+  // Will also handle 0 state.
+  curDrawPattern = 0;
+  alltoblack();
+  colorCount = 0;
+  FastLED.show();
+    
+
+  if ( state == REDCHASING) {
+    int colorOffset = 0;
+    colorsToUse[0] = CHSV(colorOffset, 255, 255);
+    colorsToUse[1] = CHSV(colorOffset, 255, 55);
+    colorCount = 2;
+    curDrawPattern = &chasingToCenterWithTail;
+  }  else if ( state == BLUECHASING) {
+    int colorOffset = 120;
+    colorsToUse[0] = CHSV(colorOffset, 255, 255);
+    colorsToUse[1] = CHSV(colorOffset, 255, 155);
+    colorCount = 2;
+    curDrawPattern = &chasingToCenterWithTail;
+    Serial.println("Turnin on blue chasing lights");
+  } else if (state == CYCLON) {
+    curDrawPattern = &cylonEffect;
+  } else if (state == FIRECHASING) {
+    //// lightning yellow is 215
+    //// yellow 225
+    int colorOffset = 225;
+    colorsToUse[0] = CHSV(255, 255, 255);
+    colorsToUse[1] = CHSV(255, 255, 155); // 155 before
+    colorsToUse[2] = CHSV(colorOffset, 255, 200);
+    colorsToUse[3] = CHSV(colorOffset, 255, 150);
+    colorCount = 4;
+    curDrawPattern = &chasingToCenterWithTail;
+  } else if ( state == REDWAVING) {
+    int colorOffset = 0;
+    colorsToUse[0] = CHSV(colorOffset, 255, 55);
+    colorsToUse[1] = CHSV(colorOffset, 255, 255);
+    colorsToUse[2] = CHSV(colorOffset, 255, 55);
+    colorCount = 3;
+    curDrawPattern = &wavingToCenterWithTail;
+  } else if ( state == REDSPLIT) {
+    int colorOffset = 0;
+    colorsToUse[0] = CHSV(colorOffset, 255, 55);
+    colorsToUse[1] = CHSV(colorOffset, 255, 255);
+    colorsToUse[2] = CHSV(colorOffset, 255, 55);
+    colorCount = 3;
+    curDrawPattern = &splitToCenterTail;
+  } else if ( state == PURPLETAILS) {
+    int colorOffset = 70;
+    colorsToUse[0] = CHSV(120, 255, 255);
+    colorsToUse[1] = CHSV(colorOffset, 255, 155);
+    colorsToUse[2] = CHSV(colorOffset, 255, 55);
+    colorCount = 3;
+    curDrawPattern = &tailsGoingOut;
+  }
+
+
 }
 
 
@@ -345,25 +354,29 @@ void loop() {
 int ledControl(String command) {
   Serial.println("rest call :" + command);
 
-  command.replace("%20"," ");
+  command.replace("%20", " ");
 
   int sepIndex = command.indexOf('&');
 
-  String cmd = command.substring(0,sepIndex);
+  String cmd = command.substring(0, sepIndex);
 
-  state = toByteState(cmd);
-  String secPart = command.substring(sepIndex+1);
+  byte newState = toByteState(cmd);
+
+
+  String secPart = command.substring(sepIndex + 1);
   int eqIndex = secPart.indexOf('=');
-  loopCount = secPart.substring(eqIndex+1).toInt();
+  loopCount = secPart.substring(eqIndex + 1).toInt();
 
-   Serial.println("Got cmd :" + cmd);
-   Serial.print("Got count :");
-   Serial.println(loopCount);
+  Serial.println("Got cmd :" + cmd);
+  Serial.print("Got count :");
+  Serial.println(loopCount);
+
+  handleStateChange(newState);
 
   //callback(cmd);
   //colorsToUse[0] = CHSV(colorOffset, 255, 255);
   //colorsToUse[0] = 0x command
-  
+
   return 1;
 
 }
@@ -371,9 +384,9 @@ int ledControl(String command) {
 byte toByteState(String str) {
   byte result = 0;
   for (int i = 0; i < str.length(); i++ ) {
-    byte b = str.substring(i, i+1).toInt();
+    byte b = str.substring(i, i + 1).toInt();
     result = result << 1;
-    result = result | b;  
+    result = result | b;
   }
   return result;
 }
@@ -381,151 +394,281 @@ byte toByteState(String str) {
 //wil move a dot along with the first color as the main one and the next ones as trailing colors.
 // Can take as many colors as you want
 void chasingToCenterWithTail(CRGB colors[], int count, int mode) {
-  
-  //int colorCount = count;
-  
-  Serial.print("chasingToCenterWith Tail :");
-  Serial.println(count);
 
-  
+  //int colorCount = count;
+
+  //Serial.print("chasingToCenterWith Tail :");
+  //Serial.println(count);
+
+
   //want to allow series of colors to run off the end.
   // at the very end past zero we dont set the color but still need to set the last color as black again.
-  for(int i = NUM_LEDS_PER_STRIP - 1; i >= 0 - count; i--) {
-   
-     for (int x = 0; x < NUM_STRIPS; x++ ) {
+  for (int i = NUM_LEDS_PER_STRIP - 1; i >= 0 - count; i--) {
+
+    for (int x = 0; x < NUM_STRIPS; x++ ) {
       // Turn our current led on to white, then show the leds
       //leds[i] = CRGB::Green;
       //leds[i] = CRGB::Yellow;
       for (int ci = 0; ci < count && (i + ci) < NUM_LEDS_PER_STRIP; ci++) {
-        if(i + ci >=0) {
+        if (i + ci >= 0) {
           leds[x][i + ci] = colors[ci];
-          
+
           //FastLED.show();
           //delay(214);
         }
 
-       
-//         Serial.print("looping over leds ");
-//         Serial.print(x);
-//         Serial.print(",");
-//         Serial.print(i);
-//         Serial.print(",");
-//         Serial.println(ci);
-        
-      }
-// lightning yellow is 215
-// yellow 225
-     }     
 
-     
-    
-     //fadeall();
-      // Wait a little bit
-     
-      
-      for (int x = 0; x < NUM_STRIPS; x++ ) {
-        //only need to set a single one to black since we shift by one color offset each time. Even with trailing colors.
-        int ce = i + count;
-        if(ce >=0 && ce < NUM_LEDS_PER_STRIP ) {
-          leds[x][ce] =  CRGB::Black;
-        }
-      }
+        //         Serial.print("looping over leds ");
+        //         Serial.print(x);
+        //         Serial.print(",");
+        //         Serial.print(i);
+        //         Serial.print(",");
+        //         Serial.println(ci);
 
-       delay(14);
-      // Show the leds (only one of which is set to white, from above)
-      FastLED.show();
-      
+      }
+      // lightning yellow is 215
+      // yellow 225
+
+      //only need to set a single one to black since we shift by one color offset each time. Even with trailing colors.
+      int ce = i + count;
+      if (ce >= 0 && ce < NUM_LEDS_PER_STRIP ) {
+        leds[x][ce] =  CRGB::Black;
+      }
     }
-  
+
+
+
+    //fadeall();
+    // Wait a little bit
+
+    delay(14);
+    // Show the leds (only one of which is set to white, from above)
+    FastLED.show();
+
+  }
+
 }
 
 
 //wil move a dot along with the first color as the main one and the next ones as trailing colors.
 // Can take as many colors as you want
 void wavingToCenterWithTail(CRGB colors[], int count, int mode) {
-  
-  //int colorCount = count;
-  
-  Serial.print("wavingToCenterWith Tail :");
-  Serial.println(count);
 
-  
+  //int colorCount = count;
+
+  //Serial.print("wavingToCenterWith Tail :");
+  //Serial.println(count);
+
+
   //want to allow series of colors to run off the end.
   // at the very end past zero we dont set the color but still need to set the last color as black again.
-  for(int i = NUM_LEDS_PER_STRIP - 1; i >= 0 - count; i--) {
-   
-     for (int x = 0; x < NUM_STRIPS; x++ ) {
+  for (int i = NUM_LEDS_PER_STRIP - 1; i >= 0 - count; i--) {
+
+    for (int x = 0; x < NUM_STRIPS; x++ ) {
       // Turn our current led on to white, then show the leds
       //leds[i] = CRGB::Green;
       //leds[i] = CRGB::Yellow;
       for (int ci = 0; ci < count && (i + ci) < NUM_LEDS_PER_STRIP; ci++) {
-        if(i + ci >=0) {
+        if (i + ci >= 0) {
           leds[x][i + ci] = colors[ci];
-          
+
           //FastLED.show();
           //delay(214);
         }
       }
-        
-        //only need to set a single one to black since we shift by one color offset each time. Even with trailing colors.
-        int ce = i + count;
-        if(ce >=0 && ce < NUM_LEDS_PER_STRIP ) {
-          leds[x][ce] =  CRGB::Purple;
-        }
 
-       delay(24);
+      //only need to set a single one to black since we shift by one color offset each time. Even with trailing colors.
+      int ce = i + count;
+      if (ce >= 0 && ce < NUM_LEDS_PER_STRIP ) {
+        leds[x][ce] =  CRGB::Purple;
+      }
+
+      delay(7);
       // Show the leds (only one of which is set to white, from above)
-      FastLED.show(); 
-     }    
+      FastLED.show();
     }
-  
+  }
+
 }
 
 
 void splitToCenterTail(CRGB colors[], int count, int mode) {
-   int colorCount = sizeOfCRGB(colors);
+  int colorCount = sizeOfCRGB(colors);
 
 
-  allToColor(CRGB::Green);
-   
-  for(int i = NUM_LEDS_PER_STRIP -1,e = 0 ; e < i && (e < NUM_LEDS_PER_STRIP/3 || i > NUM_LEDS_PER_STRIP/3) ; i--, e++) {
-     for (int x = 0; x < NUM_STRIPS; x++ ) {
+  alltoColor(CHSV(225, 255, 200));
+
+
+ 
+    int i = NUM_LEDS_PER_STRIP - 1;
+    int e = 0 ;
+for (int x = 0; x < NUM_STRIPS; x++ ) {
+    while ( e < i && (e < NUM_LEDS_PER_STRIP / 4 || i > NUM_LEDS_PER_STRIP / 4) ) {
+ 
       // Turn our current led on to white, then show the leds
       //leds[i] = CRGB::Green;
       //leds[i] = CRGB::Yellow;
 
 
-      for (int ci = 0; ci < count && (i + ci) >= NUM_LEDS_PER_STRIP/3; ci++) {
-         leds[x][i + ci] = colors[ci];
+      for (int ci = 0; ci < count && (i + ci) >= NUM_LEDS_PER_STRIP / 4; ci++) {
+        leds[x][i + ci] = colors[ci];
       }
 
       for (int ci = 0; ci < count && (e - ci) >= 0; ci++) {
-         leds[x][e - ci] = colors[ci];
+        leds[x][e - ci] = colors[ci];
       }
-// lightning yellow is 215
-// yellow 225
-     
+      // lightning yellow is 215
+      // yellow 225
+
 
       // Turn our current led back to black for the next loop around
-      for (int ci = 0; ci < colorCount && (i + ci) >= NUM_LEDS_PER_STRIP/3; ci++) {
-         leds[x][i + ci] = CRGB::Black;
-         leds[x][e - ci] = CRGB::Black; 
-      }
-
+      //for (int ci = 0; ci < colorCount && (i + ci) >= NUM_LEDS_PER_STRIP/4; ci++) {
+      //   leds[x][i + ci] = CRGB::Black;
+      //   leds[x][e - ci] = CRGB::Black;
+      //}
+ 
       // Show the leds (only one of which is set to white, from above)
       FastLED.show();
-    
-     //fadeall();
+ 
+      //fadeall();
       // Wait a little bit
       delay(14);
 
-    
 
-    
+      i--;
+      e++;
+
     }
 
-   }
+
+    while (e > 0 &&  i < NUM_LEDS_PER_STRIP)  {
+ 
+      // Turn our current led on to white, then show the leds
+      //leds[i] = CRGB::Green;
+      //leds[i] = CRGB::Yellow;
+
+      //for (int ci = 0; ci < count && (i - ci) < NUM_LEDS_PER_STRIP; ci++) {
+      leds[x][i] = CHSV(225, 255, 200);
+      //}
+
+      //for (int ci = 0; ci < count && (e + ci) >= NUM_LEDS_PER_STRIP/4; ci++) {
+      leds[x][e] = CHSV(225, 255, 200);
+      //}
+
+      // lightning yellow is 215
+      // yellow 225
+
+
+      // Turn our current led back to black for the next loop around
+      //for (int ci = 0; ci < colorCount && (i + ci) >= NUM_LEDS_PER_STRIP/4; ci++) {
+      //   leds[x][i + ci] = CRGB::Black;
+      //   leds[x][e - ci] = CRGB::Black;
+      //}
+       
+      // Show the leds (only one of which is set to white, from above)
+      FastLED.show();
+
+      //fadeall();
+      // Wait a little bit
+      delay(14);
+
+
+      i++;
+      e--;
+
+    }
 }
+  
+}
+
+
+void tailsGoingOut(CRGB colors[], int count, int mode) {
+
+ for (int i = NUM_LEDS_PER_STRIP - 1; i >= 0 - count; i--) {
+
+    for (int x = 0; x < NUM_STRIPS; x++ ) {
+      // Turn our current led on to white, then show the leds
+      //leds[i] = CRGB::Green;
+      //leds[i] = CRGB::Yellow;
+      for (int ci = 0; ci < count && (i + ci) < NUM_LEDS_PER_STRIP; ci++) {
+        if (i + ci >= 0) {
+          leds[x][i + ci] = colors[ci];
+
+          //FastLED.show();
+          //delay(214);
+        }
+
+      }
+      // lightning yellow is 215
+      // yellow 225
+
+      //only need to set a single one to black since we shift by one color offset each time. Even with trailing colors.
+      int ce = i + count;
+      if (ce >= 0 && ce < NUM_LEDS_PER_STRIP ) {
+        leds[x][ce] =  colors[count-1];
+      }
+
+      Serial.print("First Loop :" );
+      Serial.println(i);
+      
+    }
+
+
+
+    //fadeall();
+    // Wait a little bit
+
+    delay(17);
+    // Show the leds (only one of which is set to white, from above)
+    FastLED.show();
+
+ }
+
+ delay(14);
+ 
+ for (int i = 0 - count; i <  NUM_LEDS_PER_STRIP; i++) {
+
+    for (int x = 0; x < NUM_STRIPS; x++ ) {
+      // Turn our current led on to white, then show the leds
+      //leds[i] = CRGB::Green;
+      //leds[i] = CRGB::Yellow;
+      for (int ci = 0; ci < count && (i + ci) < NUM_LEDS_PER_STRIP; ci++) {
+        if (i + ci < NUM_LEDS_PER_STRIP && i + ci >= 0) {
+          leds[x][i + ci] = colors[ci];
+
+          //FastLED.show();
+          //delay(214);
+        }
+
+      }
+      // lightning yellow is 215
+      // yellow 225
+
+      //only need to set a single one to black since we shift by one color offset each time. Even with trailing colors.
+      int ce = i -1;
+      if (ce >= 0 && ce < NUM_LEDS_PER_STRIP ) {
+        leds[x][ce] =  CRGB::Black;
+      }
+
+      Serial.print("Second Loop :" );
+      Serial.println(i);
+    }
+
+
+
+    //fadeall();
+    // Wait a little bit
+
+    delay(17);
+    // Show the leds (only one of which is set to white, from above)
+    FastLED.show();
+
+ }
+    
+ 
+  
+}
+
 
 
 
@@ -537,40 +680,44 @@ void splitToCenterTail(CRGB colors[], int count, int mode) {
 void callback(const String &msg)
 {
 
- 
-// lightning yellow is 215
-// yellow 225
+  byte newState = state;
+
+  // lightning yellow is 215
+  // yellow 225
   //the light pattern to use.
   int colorOffset = 0;
-  
+
   Serial.println("callback :" + msg);
-  
+
   if (msg.indexOf("on") > -1) {
     if (msg.indexOf("switch1") > -1) {
-      state = state | SWITCH1;
+      newState = newState | SWITCH1;
     } else if (msg.indexOf("switch2") > -1 ) {
-      state = state | SWITCH2;
+      newState = newState | SWITCH2;
     } else if (msg.indexOf("switch3") > -1) {
-      state = state | SWITCH3;
-    } 
-  } else if (msg.indexOf("off") > -1) { 
+      newState = newState | SWITCH3;
+    }
+  } else if (msg.indexOf("off") > -1) {
     if (msg.indexOf("switch1") > -1) {
-      state = state & ~SWITCH1;
+      newState = newState & ~SWITCH1;
     } else if (msg.indexOf("switch2") > -1) {
-      state = state & ~SWITCH2;
+      newState = newState & ~SWITCH2;
     } else if (msg.indexOf("switch3") > -1) {
-      state = state & ~SWITCH3;
+      newState = newState & ~SWITCH3;
     }
   }
 
-  Serial.print("state =");
-  Serial.println(state);
+  Serial.print("Changing state from ");
+  Serial.print(state);
+  Serial.print(" to ");
+  Serial.println(newState);
 
-    
-    //st::receiveSmartString("switch1 off");
-    //st::receiveSmartString("switch2 off");
+  handleStateChange(newState);
 
-   //Uncomment if it weould be desirable to using this function
+  //st::receiveSmartString("switch1 off");
+  //st::receiveSmartString("switch2 off");
+
+  //Uncomment if it weould be desirable to using this function
   //Serial.print(F("ST_Anything_Miltiples Callback: Sniffed data = "));
   //Serial.println(msg);
 
@@ -582,62 +729,60 @@ void callback(const String &msg)
   //st::receiveSmartString("Put your command here!");  //use same strings that the Device Handler would send
 
 }
-     
+
 
 void cylonEffect(CRGB colors[], int count,  int mode) {
   static uint8_t hue = 0;
   Serial.print("x");
 
-   for (int x = 0; x < NUM_STRIPS;x++ ) {
-  // First slide the led in one direction
-  for(int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
-    // Set the i'th led to red 
-    leds[x][i] = CHSV(hue++, 255, 255);
-    // Show the leds
-    FastLED.show(); 
-    // now that we've shown the leds, reset the i'th led to black
-    // leds[i] = CRGB::Black;
-    if (mode == 1) {
-      alltoblack();
-    } else {
-       fadeall();
+  for (int x = 0; x < NUM_STRIPS; x++ ) {
+    // First slide the led in one direction
+    for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
+      // Set the i'th led to red
+      leds[x][i] = CHSV(hue++, 255, 255);
+      // Show the leds
+      FastLED.show();
+      // now that we've shown the leds, reset the i'th led to black
+      // leds[i] = CRGB::Black;
+      if (mode == 1) {
+        alltoblack();
+      } else {
+        fadeall();
+      }
+      // Wait a little bit before we loop around and do it again
+
+    }
+    Serial.print("x");
+    delay(10);
+  }
+
+
+  for (int x = 0; x < NUM_STRIPS; x++ ) {
+    // Now go in the other direction.
+    for (int i = NUM_LEDS_PER_STRIP; i >= 0; i--) {
+      // Set the i'th led to red
+      leds[x][i] = CHSV(hue++, 255, 255);
+      // Show the leds
+      FastLED.show();
+      // now that we've shown the leds, reset the i'th led to black
+      // leds[i] = CRGB::Black;
+      fadeall();
+
+
     }
     // Wait a little bit before we loop around and do it again
-    
+    delay(10);
   }
-  Serial.print("x");
-  delay(10);
-   }
-   
-
-  for (int x = 0; x < NUM_STRIPS;x++ ) {
-  // Now go in the other direction.  
-  for(int i = NUM_LEDS_PER_STRIP; i >= 0; i--) {
-    // Set the i'th led to red 
-    leds[x][i] = CHSV(hue++, 255, 255);
-    // Show the leds
-    FastLED.show();
-    // now that we've shown the leds, reset the i'th led to black
-    // leds[i] = CRGB::Black;
-    fadeall();
-    
-    
-  }
-  // Wait a little bit before we loop around and do it again
-  delay(10);
-   }
 
 
-  
-    
+
+
 }
 
 int sizeOfInt(int a[]) {
-     return (sizeof(a)/sizeof(int));
- }
+  return (sizeof(a) / sizeof(int));
+}
 
 int sizeOfCRGB(CRGB colors[]) {
-     return (sizeof(colors)/sizeof(CRGB));
- }   
-
- 
+  return (sizeof(colors) / sizeof(CRGB));
+}

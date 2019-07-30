@@ -187,10 +187,10 @@ void setup() {
 
   //Create the SmartThings EthernetW5100 Communications Object
   //STATIC IP Assignment - Recommended
-  st::Everything::SmartThing = new st::SmartThingsEthernetW5100(mac, ip, gateway, subnet, dnsserver, serverPort, hubIp, hubPort, st::receiveSmartString);
+  //st::Everything::SmartThing = new st::SmartThingsEthernetW5100(mac, ip, gateway, subnet, dnsserver, serverPort, hubIp, hubPort, st::receiveSmartString);
 
   //DHCP IP Assigment - Must set your router's DHCP server to provice a static IP address for this device's MAC address
-  //st::Everything::SmartThing = new st::SmartThingsEthernetW5100(mac, serverPort, hubIp, hubPort, st::receiveSmartString);
+  st::Everything::SmartThing = new st::SmartThingsEthernetW5100(mac, serverPort, hubIp, hubPort, st::receiveSmartString);
 
   //Run the Everything class' init() routine which establishes Ethernet communications with the SmartThings Hub
   st::Everything::init();

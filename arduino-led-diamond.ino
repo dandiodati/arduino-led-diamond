@@ -67,10 +67,10 @@ int ledControl(String command);
 //******************************************************************************************
 
 byte mac[] = {0x06, 0x4d, 0xc6, 0x02, 0x47, 0x4b}; //MAC address, leave first octet 0x06, change others to be unique //  <---You must edit this line!
-IPAddress ip(192, 168, 1, 133);               //Arduino device IP Address                   //  <---You must edit this line!
-IPAddress gateway(192, 168, 1, 1);            //router gateway                              //  <---You must edit this line!
-IPAddress subnet(255, 255, 255, 0);           //LAN sceubnet mask                             //  <---You must edit this line!
-IPAddress dnsserver(192, 168, 1, 1);          //DNS server                                  //  <---You must edit this line!
+//IPAddress ip(192, 168, 1, 133);               //Arduino device IP Address                   //  <---You must edit this line!
+//IPAddress gateway(192, 168, 1, 1);            //router gateway                              //  <---You must edit this line!
+//IPAddress subnet(255, 255, 255, 0);           //LAN sceubnet mask                             //  <---You must edit this line!
+//IPAddress dnsserver(192, 168, 1, 1);          //DNS server                                  //  <---You must edit this line!
 const unsigned int serverPort = 8090;         // port to run the http server on
 
 /// Smartthings hub information
@@ -116,7 +116,7 @@ typedef void (*FuncPtr)(CRGB colors[], int count, int mode);  //typedef 'return 
 FuncPtr curDrawPattern = 0;
 
 
-// This function sets up the ledsand tells the controller about them
+// This function sets up the leds and tells the controller about them
 void setup() {
 
 
